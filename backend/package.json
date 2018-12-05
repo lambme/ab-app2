@@ -9,9 +9,11 @@
     },
     "dependencies": {
         "bcryptjs": "^2.4.3",
+        "graphql-mqtt-subscriptions": "^1.1.0",
         "jsonwebtoken": "^8.4.0",
         "mysql2": "^1.6.4",
-        "rand-token": "^0.4.0"
+        "rand-token": "^0.4.0",
+        "ws": "^6.1.2"
     },
     "devDependencies": {
         "apollo-server": "^2.2.2",

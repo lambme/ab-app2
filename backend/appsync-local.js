@@ -5,8 +5,10 @@ const { Source, execute, subscribe } = require("graphql");
 const { ApolloServer } = require("apollo-server-express");
 const { SubscriptionServer } = require("subscriptions-transport-ws");
 
-//const { PubSub } = require("graphql-subscriptions");
-const { MQTTPubSub } = require("graphql-mqtt-subscriptions");
+const WebSocket = require('ws');
+
+const { PubSub } = require("graphql-subscriptions");
+//const { MQTTPubSub } = require("graphql-mqtt-subscriptions");
 //const mqttCon = require("mqtt-connection");
 
 const velocity = require("velocityjs");
@@ -20,6 +22,8 @@ const { parse } = require("graphql/language");
 
 require("dotenv").config();
 
+
+
 const options = {
     quiet: false
 };
@@ -27,7 +31,8 @@ process.argv.forEach(option => {
     if (option === "-q" || option === "--quiet") options.quiet = true;
 });
 
-const pubsub = new MQTTPubSub();
+//const pubsub = new MQTTPubSub();
+const pubsub = new PubSub();
 
 const CF_SCHEMA = yaml.Schema.create([
     new yaml.Type("!Ref", {
@@ -246,6 +251,9 @@ Object.keys(cfTemplate.Resources).forEach(name => {
                         chalk.black.bgBlue(fieldName),
                         `executed at ${d.toLocaleTimeString()}`
                     );
+                    console.log(
+                        `returning payload: ${payload}`
+                    );
                     return payload;
                 },
                 subscribe: () => {
@@ -387,7 +395,7 @@ const apolloConfig = {
                 {
                     client: "asdfasdf",
                     topics: ["556321430524/hn4bqejfjzfvro2xit6utn6rcq/newEdit/"],
-                    url: "ws://52.17.94.253:4000/subscriptions"
+                    url: `ws://${process.env.LOCAL_APPSYNC_IP}:4000/subscriptions`
                 }
             ],
             newSubscriptions: {
@@ -397,6 +405,8 @@ const apolloConfig = {
                 }
             }
         };
+        
+        console.log('formatResponse', data);
 
         return data;
     },
@@ -409,8 +419,13 @@ gqlserver.applyMiddleware({ app });
 
 const server = createServer(app);
 
+const wss = new WebSocket.Server({ server });
+wss.on('connection', ws => {
+    ws.send('Hello, test!');
+});
+
 server.listen(4000, () => {
-    new SubscriptionServer(
+    /*new SubscriptionServer(
         {
             execute,
             subscribe,
@@ -424,7 +439,7 @@ server.listen(4000, () => {
             server: server,
             path: "/subscriptions"
         }
-    );
+    );*/
 });
 
 /*
@@ -437,15 +452,15 @@ server.listen().then(data => {
 });
 */
 
-//pubsub.subscribe('newEdit', (result) => {
-// console.log(`Received result of ${SOMETHING_CHANGED_TOPIC}`, result)
-//})
-/*
+pubsub.subscribe('newEdit', (result) => {
+    console.log(`Received result of subscribe newEdit`, result)
+})
+
 let id = 0;
 setInterval(() => {
-  pubsub.publish('Mutation_edit', {d_id: id++, d_title: "some title"})
-}, 5000)
-*/
+    pubsub.publish('Mutation_edit', {d_id: id++, d_title: "some title"})
+}, 5000);
+
 
 /*
 https://github.com/mqttjs/mqtt-connection
