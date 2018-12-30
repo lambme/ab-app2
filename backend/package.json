@@ -16,7 +16,7 @@
         "ws": "^6.1.2"
     },
     "devDependencies": {
-        "apollo-server": "^2.2.2",
+        "apollo-server": "^2.3.1",
         "axios": "^0.18.0",
         "chalk": "^2.4.1",
         "dotenv": "^5.0.1",
@@ -24,8 +24,8 @@
         "js-yaml": "^3.12.0",
         "mqtt-connection": "^4.0.0",
         "mqtt-packet": "^6.0.0",
-        "nodemon": "^1.18.6",
-        "prettier": "^1.15.2",
+        "nodemon": "^1.18.9",
+        "prettier": "^1.15.3",
         "velocityjs": "^1.1.3"
     }
 }

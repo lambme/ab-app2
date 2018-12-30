@@ -24,8 +24,6 @@ const { parse } = require("graphql/language");
 
 require("dotenv").config();
 
-
-
 const options = {
     quiet: false
 };
@@ -248,24 +246,24 @@ Object.keys(cfTemplate.Resources).forEach(name => {
             resolvers["Subscription"][fieldName] = {
                 resolve: payload => {
                     const d = new Date();
-                    /*console.log(
+                    console.log(
                         `Subscription resolve() for the field`,
                         chalk.black.bgBlue(fieldName),
                         `executed at ${d.toLocaleTimeString()}`
-                    );*/
-                    /*console.log(
+                    );
+                    console.log(
                         `returning payload: ${payload}`
-                    );*/
+                    );
                     return payload;
                 },
                 subscribe: () => {
                     const d = new Date();
-                    /*console.log(
+                    console.log(
                         `Subscription subscribe() for the field`,
                         chalk.black.bgBlue(fieldName),
                         `executed at ${d.toLocaleTimeString()}`
-                    );*/
-                    //console.log(`Returned asyncIterator(${eventLists[fieldName]})`);
+                    );
+                    console.log(`Returned asyncIterator(${eventLists[fieldName]})`);
                     return pubsub.asyncIterator(eventLists[fieldName]);
                 }
             };
@@ -277,22 +275,22 @@ Object.keys(cfTemplate.Resources).forEach(name => {
                     process.env.LOCAL_LAMBDA_PORT
                 }/2015-03-31/functions/${dataSources[dataSourceName]}/invocations`;
             } else {
-                /*console.log(
+                console.log(
                     chalk.black.bgYellow("WARNING"),
                     `Lambda endpoint is not defined for the ${fieldName} resolver`
-                );*/
+                );
             }
 
             //resolver function
             resolvers[typeName][fieldName] = async (root, args, context) => {
                 const d = new Date();
-                /*console.log(
+                console.log(
                     `Resolver`,
                     chalk.black.bgBlue(fieldName),
                     `executed at ${d.toLocaleTimeString()}`
-                );*/
+                );
 
-                //console.log("Rendering velocity template...");
+                console.log("Rendering velocity template...");
                 let template = velocity.render(requestMappingTemplate, {
                     context: {
                         arguments: JSON.stringify(args),
@@ -315,15 +313,15 @@ Object.keys(cfTemplate.Resources).forEach(name => {
                                     : headers[key];
                         });
                     }
-                    //console.log("Resulting template:", JSON.stringify(template));
+                    console.log("Resulting template:", JSON.stringify(template));
                 }
 
                 if (lambdaEndpoint === undefined) {
-                    //console.log("No endpoint defined, nothing to do..");
+                    console.log("No endpoint defined, nothing to do..");
                     return;
                 }
 
-                //console.log("Invoking lambda function with payload...");
+                console.log("Invoking lambda function with payload...");
                 const response = await axios.post(lambdaEndpoint, payload, {
                     headers: {
                         Accept: "application/json",
@@ -333,29 +331,29 @@ Object.keys(cfTemplate.Resources).forEach(name => {
 
                 const { data } = response;
                 if (data.errorMessage !== undefined) {
-                    //console.log("Lambda response:", chalk.black.bgRed("ERROR"));
-                    //console.log("Error: ", JSON.stringify(data));
-                    //console.log("");
+                    console.log("Lambda response:", chalk.black.bgRed("ERROR"));
+                    console.log("Error: ", JSON.stringify(data));
+                    console.log("");
                     throw new Error(data.errorMessage);
                 } else {
-                    //console.log("Lambda response:", chalk.black.bgGreen("DATA"));
+                    console.log("Lambda response:", chalk.black.bgGreen("DATA"));
                     if (!options.quiet) {
-                        //console.log("Data: ", JSON.stringify(data));
+                        console.log("Data: ", JSON.stringify(data));
                     }
 
                     if (subscriptions[typeName][fieldName] !== undefined) {
                         const eventName = typeName + "_" + fieldName;
-                        /*console.log(
+                        console.log(
                             `Publishing event "${eventName}" to subscriptions: ${JSON.stringify(
                                 subscriptions[typeName][fieldName]
                             )}...`
-                        );*/
+                        );
                         subscriptions[typeName][fieldName].forEach(subscriptionName =>
                             pubsub.publish(eventName, { [subscriptionName]: data })
                         );
                     }
 
-                    //console.log("");
+                    console.log("");
                     return data;
                 }
             };
@@ -363,26 +361,28 @@ Object.keys(cfTemplate.Resources).forEach(name => {
     }
 });
 
+console.log(resolvers);
+
 //creating and starting Apollo-server
 const apolloConfig = {
     typeDefs,
     resolvers,
     subscriptions: {
         onConnect: (connectionParams, webSocket, context) => {
-            //console.log("Subscriptions - onConnect fired");
-               webSocket.on('message', msg => {
-                //console.log('WebSocket: ', msg);
-               });
+            console.log("Subscriptions - onConnect fired");
+            webSocket.on('message', msg => {
+                console.log('WebSocket: ', msg);
+            });
         }
     },
     context: async data => {
         const { req, connection } = data;
-        //console.log("context. executed!", connection);
+        console.log("context. executed!", connection);
         //console.log(data);
         //if(req) console.log('Request', req.body);
         //if(connection) console.log('Connection', connection);
         if (connection) {
-            //console.log("Connecting to socket..");
+            console.log("Connecting to socket..");
             //const MQTTclient = mqttCon(connection);
 
             //return client.connack({ returnCode: 0 });
@@ -406,12 +406,12 @@ const apolloConfig = {
             newSubscriptions: {
                 newEdit: {
                     topic: "556321430524/hn4bqejfjzfvro2xit6utn6rcq/newEdit/",
-                    expireTime: 1541639597
+                    expireTime: 9546206832000
                 }
             }
         };
         
-        //console.log('formatResponse', data);
+        console.log('formatResponse', data);
 
         return data;
     },
@@ -422,83 +422,9 @@ const app = express();
 const gqlserver = new ApolloServer(apolloConfig);
 gqlserver.applyMiddleware({ app });
 
-const localServer = createServer(express());
-const publicServer = createServer(app);
+const server = createServer(app);
 
-const wss = new WebSocket.Server({ server: publicServer, path: "/subscriptions" });
-wss.on('connection', ws => {
-
-    const wsClient = new Promise((resolve, reject) => {
-        const w = new WebSocket("ws://127.0.0.1:4001/subscriptions");
-        w.on('open', () => {
-            console.log('opened');
-            resolve(w)
-        });
-        w.on('close', (x) => console.log('closed', x));
-    });
-    
-    const parser = mqtt.parser({
-        protocolVersion: 3
-    });
-    parser.on('packet', packet => {
-        console.log(packet);
-    });
-    
-    ws.on('message', msg => {
-        //console.log('WS from client: ', msg);
-        parser.parse(msg);
-        wsClient.then(wc => wc.send(msg));
-    });
-    
-    wsClient.then(wc => wc.on('message', msg => {
-        //console.log('WS from server: ', msg);
-        parser.parse(msg);
-        ws.send(msg);
-    }));
-    
-    /*ws.on('message', msg => {
-        console.log('WebSocket: ', msg);
-        
-        const parser = mqtt.parser({
-            protocolVersion: 3
-        });
-        
-        parser.on('packet', packet => {
-            console.log(packet);
-            if (packet.cmd == 'connect') {
-                const connack = {
-                    cmd: "connack",
-                    returnCode: 0
-                };
-                ws.send(mqtt.generate(connack));
-            }
-            if (packet.cmd == 'subscribe') {
-                const suback = {
-                    cmd: 'suback',
-                    messageId: packet.messageId,
-                    granted: [0, 1, 2, 128] // WHY?    from https://github.com/mqttjs/mqtt-packet
-                };
-                ws.send(mqtt.generate(suback));
-                
-                setTimeout(() => {
-                    console.log('Sending publish');
-                    const publish = {
-                        cmd: 'publish',
-                        qos: 0,
-                        topic: '556321430524/hn4bqejfjzfvro2xit6utn6rcq/newEdit/',
-                        payload: new Buffer('Your data?')
-                    };
-                    ws.send(mqtt.generate(publish));
-                }, 2500);
-            }
-        });
-        
-        parser.parse(msg);
-    })*/
-});
-localServer.listen({port: 4001, host: "127.0.0.1"});
-
-publicServer.listen({port: 4000}, () => {
+server.listen(4000, () => {
     new SubscriptionServer(
         {
             execute,
@@ -506,49 +432,20 @@ publicServer.listen({port: 4000}, () => {
             typeDefs,
             resolvers,
             onConnect: (connectionParams, webSocket, context) => {
-                //console.log("Subscriptions - onConnect fired");
+                console.log("Subscriptions - onConnect fired");
             }
         },
         {
-            server: localServer,
+            server: server,
             path: "/subscriptions"
         }
     );
+    
+    let id = 0;
+    setInterval(() => {
+        id++;
+        pubsub.publish('newEdit', {d_id: id, d_title: "some title"});
+        //console.log('Published newEdit', pubsub);
+        id %= 24;
+    }, 10000);
 });
-
-/*
-const server = new ApolloServer(apolloConfig);
-
-server.listen().then(data => {
-    const { url, subscriptionsUrl } = data;
-    console.log(chalk.bold(`Local AppSync ready at ${url}`));
-    console.log(chalk.bold(`The subscriptions url is ${subscriptionsUrl}\n`));
-});
-*/
-
-/*pubsub.subscribe('newEdit', (result) => {
-    console.log(`Received result of subscribe newEdit`, result)
-})
-
-let id = 0;
-setInterval(() => {
-    pubsub.publish('Mutation_edit', {d_id: id++, d_title: "some title"})
-}, 5000);*/
-
-
-/*
-https://github.com/mqttjs/mqtt-connection
-https://github.com/JacopoDaeli/realtime-graphql/blob/master/src/server/mqtt.js
-jacopo.daeli@gmail.com
-
-https://github.com/gnemtsov/subscriptions-transport-ws
-
-mqtt pubsub implementation: https://github.com/davidyaha/graphql-mqtt-subscriptions
-
-Have a look at old version of subscriptionManager, it might be a good fit for us. 
-If not, probably we need to implement our own subcriptions-transport-ws for mqtt over sockets...
-
-Working with mqtt:
-https://github.com/mqttjs/mqtt-packet
-https://github.com/mqttjs/mqtt-connection
-*/
